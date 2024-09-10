@@ -26,7 +26,7 @@ module "ec2" {
   source = "./module/ec2_instance"
 
   # Pass variables to EC2 module
-  ami_value              = "ami-0522ab6e1ddcc7055"    # data.aws_ami.ubuntu_24_arm.id                            
+  ami_value              = "ami-0522ab6e1ddcc7055" # data.aws_ami.ubuntu_24_arm.id                            
   instance_type_value    = "t2.large"
   key_name               = "varma.pem"
   instance_count         = "1"
