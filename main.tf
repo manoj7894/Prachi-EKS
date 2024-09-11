@@ -44,7 +44,7 @@ module "eks" {
   public_subnet_id_value  = module.vpc.public_subnet_id
   private_subnet_id_value = module.vpc.private_subnet_id
   instance_type_value     = "t2.large"
-  cluster_name            = "EKS_01"
+  cluster_name            = "eks-1"
   workernode_name         = "Node_01"
   key_name                = "varma.pem"
   security_group_id       = module.ec2.security_group_id
