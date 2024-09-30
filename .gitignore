@@ -3,3 +3,4 @@ variable.tf
 *.tfvars
 .terraform.lock.hcl
 .terraform
+errored.tfstate
