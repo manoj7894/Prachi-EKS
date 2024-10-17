@@ -1,3 +1,46 @@
+# Create a security group
+resource "aws_security_group" "devopsshack_cluster_sg" {
+  name_prefix = "EKS-security-group"
+  description = "EKS security group"
+  vpc_id      = var.vpc_id
+
+  # Define your security group rules as needed
+  # For example, allow SSH and HTTP traffic
+  ingress {
+    description = "ssh access"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "HTTP access"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Allow HTTP access (port 8080) for Jenkins web interface
+  ingress {
+    description = "EFS access"
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # outgoing traffic
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+
 # To create policy documenent1
 data "aws_iam_policy_document" "eks_assume_role" {
   statement {
@@ -31,7 +74,7 @@ resource "aws_eks_cluster" "eks-cluster" {
 
   vpc_config {
     subnet_ids = [var.public_subnet_id_value, var.private_subnet_id_value]
-    security_group_ids = [var.security_group_id]
+    security_group_ids = [aws_security_group.devopsshack_cluster_sg.id]
   }
 }
 
@@ -52,7 +95,41 @@ resource "aws_iam_role" "eks_node_role" {
   })
 }
 
+# IAM role policy attachment for EBS actions
+resource "aws_iam_policy" "ebs_policy" {
+  name        = "EBSAccessPolicy"
+  description = "Policy to allow EBS actions for EKS worker nodes"
+  
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ec2:AttachVolume",
+          "ec2:DetachVolume",
+          "ec2:CreateVolume",
+          "ec2:DeleteVolume",
+          "ec2:DescribeVolumes",
+          "ec2:DescribeVolumeStatus",
+          "ec2:ModifyVolume"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
 
+# Attach the EBS policy to the IAM role used by EKS nodes
+resource "aws_iam_role_policy_attachment" "attach_ebs_policy" {
+  policy_arn = aws_iam_policy.ebs_policy.arn
+  role       = aws_iam_role.eks_node_role.name
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_csi_driver_policy" {
+  role       = aws_iam_role.eks_node_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+}
 
 # To attach the policy1 to IAM role2
 resource "aws_iam_role_policy_attachment" "example-AmazonEKS_CNI_Policy" {
@@ -98,7 +175,7 @@ resource "aws_eks_node_group" "node_01" {
 
   remote_access {
     ec2_ssh_key               = var.key_name
-    source_security_group_ids = [var.security_group_id]
+    source_security_group_ids = [aws_security_group.devopsshack_cluster_sg.id]
   }
 
 

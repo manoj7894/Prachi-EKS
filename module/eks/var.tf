@@ -22,8 +22,9 @@ variable "key_name" {
     description = "key_pair value name"
 }
 
-variable "security_group_id" {
-  description = "value of security_group_id"
+variable "vpc_id" {
+  description = "The ID of the VPC"
+  type        = string
 }
 
 # variable "ubuntu_ami" {
