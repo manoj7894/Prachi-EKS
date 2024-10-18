@@ -60,54 +60,48 @@ module "efs" {
 }
 
 
-# resource "null_resource" "name" {
-#   connection {
-#     type        = "ssh"
-#     user        = "ubuntu"
-#     private_key = file(var.private_key_path)
-#     # private_key = "module.ec2.key_name"
-#     #private_key = file("${path.module}/varma.pem")  # Ensure this path is correct
-#     host = module.ec2.public_ip[0]
-#   }
+resource "null_resource" "name" {
+  connection {
+    type        = "ssh"
+    user        = "ubuntu"
+    private_key = file(var.private_key_path)
+    # private_key = "module.ec2.key_name"
+    #private_key = file("${path.module}/varma.pem")  # Ensure this path is correct
+    host = module.ec2.public_ip[0]
+  }
 
-#   provisioner "file" {
-#     source      = "./module/ec2_instance/jenkins.sh"
-#     destination = "/home/ubuntu/jenkins.sh"
-#   }
+  provisioner "file" {
+    source      = "./module/ec2_instance/jenkins.sh"
+    destination = "/home/ubuntu/jenkins.sh"
+  }
 
-#   # provisioner "file" {
-#   #   source      = ".env"  # Path to your local .env file
-#   #   destination = "/home/ubuntu/terraform.tfvars"  # Path on the remote instance
-#   # }
+  #   # provisioner "file" {
+  #   #   source      = ".env"  # Path to your local .env file
+  #   #   destination = "/home/ubuntu/terraform.tfvars"  # Path on the remote instance
+  #   # }
 
-#   provisioner "remote-exec" {
-#     inline = [
-#       "curl -LO https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl",
-#       "chmod +x kubectl",
-#       "aws eks --region ${var.region} describe-cluster --name ${module.eks.cluster_name} --query cluster.status",
-#       "aws eks --region ${var.region} update-kubeconfig --name ${module.eks.cluster_name}",
-#       "sudo mv kubectl /usr/local/bin/",
-#       "sudo chmod +x /home/ubuntu/jenkins.sh",
-#       "sh /home/ubuntu/jenkins.sh",
+  provisioner "remote-exec" {
+    inline = [
+      "export $(grep -v '^#' /home/ubuntu/.env | xargs)",
+      "mkdir -p /home/ubuntu/.aws",
+      "echo '[default]' > /home/ubuntu/.aws/config",
+      "echo 'region = ${var.region}' >> /home/ubuntu/.aws/config",
+      "echo '[default]' > /home/ubuntu/.aws/credentials",
+      "echo 'aws_access_key_id = ${var.access_key}' >> /home/ubuntu/.aws/credentials",
+      "echo 'aws_secret_access_key = ${var.secret_key}' >> /home/ubuntu/.aws/credentials",
 
+      # Optional: Clean up the .env file if not needed
+      "rm /home/ubuntu/.env",
 
+      "curl -LO https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl",
+      "chmod +x kubectl",
+      "aws eks --region ${var.region} describe-cluster --name ${module.eks.cluster_name} --query cluster.status",
+      "aws eks --region ${var.region} update-kubeconfig --name ${module.eks.cluster_name}",
+      "sudo mv kubectl /usr/local/bin/",
+      "sudo chmod +x /home/ubuntu/jenkins.sh",
+      "sh /home/ubuntu/jenkins.sh"
+    ]
+  }
 
-
-#       # # Load environment variables from .env file
-#       # "export $(grep -v '^#' /home/ubuntu/.env | xargs)",
-
-#       # Create AWS CLI config and credentials files
-#       "mkdir -p /home/ubuntu/.aws",
-#       "echo '[default]' > /home/ubuntu/.aws/config",
-#       "echo 'region = ${var.region}' >> /home/ubuntu/.aws/config",
-#       "echo '[default]' > /home/ubuntu/.aws/credentials",
-#       "echo 'aws_access_key_id = ${var.access_key}' >> /home/ubuntu/.aws/credentials",
-#       "echo 'aws_secret_access_key = ${var.secret_key}' >> /home/ubuntu/.aws/credentials",
-
-#       # # Optional: Clean up the .env file if not needed
-#       # "rm /home/ubuntu/.env"
-#     ]
-#   }
-
-#   depends_on = [module.ec2, module.eks]
-# }
+  depends_on = [module.ec2, module.eks]
+}

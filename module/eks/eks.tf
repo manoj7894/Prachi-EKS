@@ -171,7 +171,6 @@ resource "aws_eks_node_group" "node_01" {
   node_group_name             = var.workernode_name
   node_role_arn               = aws_iam_role.eks_node_role.arn
   subnet_ids                  = [var.public_subnet_id_value]
-  instance_types              = [var.instance_type_value]
 
   remote_access {
     ec2_ssh_key               = var.key_name
@@ -199,4 +198,5 @@ resource "aws_eks_node_group" "node_01" {
   #   id      = aws_launch_template.ubuntu_template.id
   #   version = "$Latest"
   # }
+  depends_on = [aws_eks_cluster.eks-cluster]
 }
