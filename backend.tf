@@ -23,7 +23,7 @@
 
 terraform {
   backend "s3" {
-    bucket  = "terraform-backupfile1"
+    bucket  = "terraform-backup-3003"
     key     = "terraform.tfstate"
     region  = "us-east-1" # Replace with your AWS region
     encrypt = true
