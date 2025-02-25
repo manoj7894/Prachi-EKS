@@ -1,6 +1,6 @@
 # Create a security group
-resource "aws_security_group" "devopsshack_cluster_sg" {
-  name_prefix = "EKS-security-group"
+resource "aws_security_group" "EKS_cluster_sg" {
+  name_prefix = var.security_group_name
   description = "EKS security group"
   vpc_id      = var.vpc_id
 
@@ -11,7 +11,8 @@ resource "aws_security_group" "devopsshack_cluster_sg" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    # cidr_blocks = ["0.0.0.0/0"]
+    security_groups = [var.ec2_security_group_pass]  # ✅ Correct usage
   }
 
   ingress {
@@ -19,7 +20,17 @@ resource "aws_security_group" "devopsshack_cluster_sg" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    # cidr_blocks = ["0.0.0.0/0"]
+    security_groups = [var.ec2_security_group_pass]  # ✅ Correct usage
+  }
+
+  ingress {
+    description = "HTTPs access"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    # cidr_blocks = ["0.0.0.0/0"]
+    security_groups = [var.ec2_security_group_pass]  # ✅ Correct usage
   }
 
   # Allow HTTP access (port 8080) for Jenkins web interface
@@ -28,7 +39,8 @@ resource "aws_security_group" "devopsshack_cluster_sg" {
     from_port   = 2049
     to_port     = 2049
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    # cidr_blocks = ["0.0.0.0/0"]
+    security_groups = [var.ec2_security_group_pass]  # ✅ Correct usage
   }
 
   # outgoing traffic
@@ -57,7 +69,7 @@ data "aws_iam_policy_document" "eks_assume_role" {
 
 # To create the IAM role1
 resource "aws_iam_role" "eks_role_1" {
-  name               = "eks-cluster-role1"
+  name               = var.role_name
   assume_role_policy = data.aws_iam_policy_document.eks_assume_role.json
 }
 
@@ -73,13 +85,13 @@ resource "aws_eks_cluster" "eks-cluster" {
   role_arn = aws_iam_role.eks_role_1.arn
 
   vpc_config {
-    subnet_ids = [var.public_subnet_id_value, var.private_subnet_id_value]
-    security_group_ids = [aws_security_group.devopsshack_cluster_sg.id]
+    subnet_ids = [var.private_subnet_id_value_1, var.private_subnet_id_value_2]
+    security_group_ids = [aws_security_group.EKS_cluster_sg.id]
   }
 }
 
 resource "aws_iam_role" "eks_node_role" {
-  name = "eks-node-role"
+  name = var.worker_node_role
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
@@ -97,7 +109,7 @@ resource "aws_iam_role" "eks_node_role" {
 
 # IAM role policy attachment for EBS actions
 resource "aws_iam_policy" "ebs_policy" {
-  name        = "EBSAccessPolicy"
+  name        = var.ebs_policy
   description = "Policy to allow EBS actions for EKS worker nodes"
   
   policy = jsonencode({
@@ -170,11 +182,11 @@ resource "aws_eks_node_group" "node_01" {
   cluster_name                = aws_eks_cluster.eks-cluster.name
   node_group_name             = var.workernode_name
   node_role_arn               = aws_iam_role.eks_node_role.arn
-  subnet_ids                  = [var.public_subnet_id_value]
+  subnet_ids                  = [var.private_subnet_id_value_1, var.private_subnet_id_value_2]
 
   remote_access {
     ec2_ssh_key               = var.key_name
-    source_security_group_ids = [aws_security_group.devopsshack_cluster_sg.id]
+    source_security_group_ids = [aws_security_group.EKS_cluster_sg.id]
   }
 
 

@@ -1,5 +1,5 @@
 # To create the Ec2 instance
-resource "aws_instance" "Ec2_instance_1" {
+resource "aws_instance" "worknode" {
   ami                         = var.ami_value           # Change to your desired AMI ID
   instance_type               = var.instance_type_value # Change to your desired instance type
   subnet_id                   = var.public_subnet_id_value

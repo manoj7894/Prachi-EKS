@@ -5,3 +5,7 @@ output "security_group_id" {
 output "public_ip" {
   value = aws_instance.Ec2_instance_1[*].public_ip
 }
+
+output "elastic_ip" {
+  value = aws_eip.elastic_ip[*].public_ip
+}

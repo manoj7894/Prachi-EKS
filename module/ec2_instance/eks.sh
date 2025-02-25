@@ -6,18 +6,9 @@ sudo apt-get update -y
 
 
 
-# Install Jenkins
-sudo wget -O /usr/share/keyrings/jenkins-keyring.asc \
-    https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
-echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc]" \
-    https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
-    /etc/apt/sources.list.d/jenkins.list > /dev/null
+# Install Java
 sudo apt-get update
 sudo apt-get install fontconfig openjdk-17-jre -y
-sudo apt-get install jenkins -y
-sudo systemctl start jenkins
-sudo systemctl enable jenkins
-echo "Jenkins installation complete."
 
 
 
@@ -77,21 +68,6 @@ echo "Trivy installation complete."
 # Install NPM
 sudo apt install npm -y
 
-# # installs fnm (Fast Node Manager)
-# curl -fsSL https://fnm.vercel.app/install | bash
-
-# # activate fnm
-# source /home/ubuntu/.bashrc
-
-# # download and install Node.js
-# fnm use --install-if-missing 22
-
-# # verifies the right Node.js version is in the environment
-# node -v # should print `v22.7.0`
-
-# # verifies the right npm version is in the environment
-# npm -v # should print `10.8.2`
-
 
 
 # Install AWS_CLI
@@ -100,17 +76,6 @@ sudo apt-get install -y curl unzip
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip
 sudo ./aws/install
-# # Load environment variables from .env file
-# export $(grep -v '^#' .env | xargs)
-# echo "region = ${region}" >> /home/ubuntu/.aws/config
-# echo "aws_access_key_id = ${access_key}" >> /home/ubuntu/.aws/credentials
-# echo "aws_secret_access_key = ${secret_key}" >> /home/ubuntu/.aws/credentials
-
-
-
-# # Set up automatic updates for security patches
-# sudo apt-get install unattended-upgrades -y
-# sudo dpkg-reconfigure --priority=low unattended-upgrades
 
 
 
@@ -140,4 +105,3 @@ EOF
 
 echo "Installation complete. Jenkins, Docker, Maven, Git, and SonarQube are set up."
 echo "Sonarqube installation complete."
-sudo cat /var/lib/jenkins/secrets/initialAdminPassword

@@ -2,11 +2,15 @@ module "vpc" {
   source = "./module/vpc"
 
   # Pass variables to VPC module
-  vpc_id                  = "10.0.0.0/16"
-  public_subnet_id_value  = "10.0.1.0/24"
-  availability_zone       = "us-east-1a"
-  private_subnet_id_value = "10.0.2.0/24"
-  availability_zone1      = "us-east-1b"
+  vpc_id                    = "10.0.0.0/16"
+  public_subnet_id_value    = "10.0.1.0/24"
+  availability_zone_1       = "ap-south-1a"
+  map_public_ip_on_launch   = "true" # Enable auto-assign public IP
+  private_subnet_id_value_1 = "10.0.2.0/24"
+  availability_zone_2       = "ap-south-1b"
+  private_subnet_id_value_2 = "10.0.3.0/24"
+  availability_zone_3       = "ap-south-1c"
+
 }
 
 
@@ -14,38 +18,49 @@ module "ec2" {
   source = "./module/ec2_instance"
 
   # Pass variables to EC2 module
-  ami_value              = "ami-0866a3c8686eaeeba" # data.aws_ami.ubuntu_24_arm.id                            
-  instance_type_value    = "t2.large"
-  key_name               = "varma.pem"
-  instance_count         = "1"
-  public_subnet_id_value = module.vpc.public_subnet_id
-  availability_zone      = "us-east-1a"
-  vpc_id                 = module.vpc.vpc_id
-} 
+  ami_value                   = "ami-00bb6a80f01f03502" # data.aws_ami.ubuntu_24_arm.id                            
+  instance_type_value         = "t3a.xlarge"
+  key_name                    = "varma.pem"
+  instance_count              = "1"
+  public_subnet_id_value      = module.vpc.public_subnet_id
+  associate_public_ip_address = "true" # Enable a public IP
+  availability_zone_1         = "ap-south-1a"
+  vpc_id                      = module.vpc.vpc_id
+  volume_size                 = "30"
+  volume_type                 = "gp3"
+  security_group_name         = "EKS_Ec2_Security_Group"
+  # instance_tenancy       = "dedicated"
+}
 
 
 module "eks" {
   source = "./module/eks"
 
   # Pass variables to EKS module
-  public_subnet_id_value  = module.vpc.public_subnet_id
-  private_subnet_id_value = module.vpc.private_subnet_id
-  instance_type_value     = "t2.large"
-  cluster_name            = "eks-1"
-  workernode_name         = "Node_01"
-  key_name                = "varma.pem"
-  vpc_id                  = module.vpc.vpc_id
-} 
+  security_group_name = "EKS_Cluster_Security_Group"
+  ec2_security_group_pass   = module.ec2.security_group_id
+  # vpc_cidr_block            = module.vpc.vpc_cidr_block
+  role_name                 = "EKS_Cluster_Role_1"
+  private_subnet_id_value_1 = module.vpc.private_subnet_id_value_1
+  private_subnet_id_value_2 = module.vpc.private_subnet_id_value_2
+  worker_node_role          = "EKS_Workernode_Role_1"
+  ebs_policy                = "EBS_Policy_1"
+  instance_type_value       = "t3.medium"
+  cluster_name              = "eks-1"
+  workernode_name           = "Node_01"
+  key_name                  = "varma.pem"
+  vpc_id                    = module.vpc.vpc_id
+}
 
 
-module "efs" {
-  source = "./module/efs"
+# module "efs" {
+#   source = "./module/efs"
 
-  vpc_id                  = module.vpc.vpc_id
-  public_subnet_id_value  = module.vpc.public_subnet_id
-  private_subnet_id_value = module.vpc.private_subnet_id
-  security_group_id       = module.eks.security_group_id
-} 
+#   vpc_id                  = module.vpc.vpc_id
+#   public_subnet_id_value  = module.vpc.public_subnet_id
+#   private_subnet_id_value = module.vpc.private_subnet_id
+#   security_group_id       = module.eks.security_group_id
+# } 
 
 
 resource "null_resource" "name" {
@@ -53,12 +68,12 @@ resource "null_resource" "name" {
     type        = "ssh"
     user        = "ubuntu"
     private_key = file(var.private_key_path)
-    host = module.ec2.public_ip[0]
+    host        = module.ec2.elastic_ip[0] # Use the Elastic IP from the module
   }
 
   provisioner "file" {
-    source      = "./module/ec2_instance/jenkins.sh"
-    destination = "/home/ubuntu/jenkins.sh"
+    source      = "./module/ec2_instance/eks.sh"
+    destination = "/home/ubuntu/eks.sh"
   }
 
   provisioner "remote-exec" {
@@ -79,8 +94,8 @@ resource "null_resource" "name" {
       "aws eks --region ${var.region} describe-cluster --name ${module.eks.cluster_name} --query cluster.status",
       "aws eks --region ${var.region} update-kubeconfig --name ${module.eks.cluster_name}",
       "sudo mv kubectl /usr/local/bin/",
-      "sudo chmod +x /home/ubuntu/jenkins.sh",
-      "sh /home/ubuntu/jenkins.sh"
+      "sudo chmod +x /home/ubuntu/eks.sh",
+      "sh /home/ubuntu/eks.sh"
     ]
   }
 
