@@ -35,47 +35,14 @@ sudo systemctl start docker
 echo "Docker installation complete."
 
 
-
-# Install Maven
-# Maven will be updated automatically by the package manager
-sudo apt-get update -y
-sudo apt-get install maven -y
-mvn -version
-echo "Maven installation complete."
-
-
-
-# Install Git
-# Git will be updated automatically by the package manager
-sudo apt-get update -y
-sudo apt-get install git -y
-git --version
-echo "Git installation complete."
-
-
-
-# Install Trivy-Scanner
-sudo apt-get install wget apt-transport-https gnupg lsb-release -y
-wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
-sudo apt-get update
-sudo apt-get install trivy
-echo "Trivy installation complete."
-
-
-
-# Install NPM
-sudo apt install npm -y
-
-
-
-# Install AWS_CLI
-sudo apt-get update -y
+# Install AWS CLI
+echo "Installing AWS CLI..."
 sudo apt-get install -y curl unzip
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 unzip awscliv2.zip
 sudo ./aws/install
-
+rm -rf awscliv2.zip aws
+echo "AWS CLI installation complete."
 
 
 # Install kubectl
@@ -93,6 +60,12 @@ sudo mv eksctl /usr/local/bin/
 echo "eksctl installation complete."
 
 
+# Install containerd
+sudo yum install -y containerd
+sudo systemctl enable containerd --now
+
+
+# Install Kubernetes components (kubeadm, kubelet, kubectl)
 # Install Kubernetes components
 echo "Installing Kubernetes components..."
 sudo rm -f /etc/apt/sources.list.d/kubernetes.list
@@ -106,36 +79,45 @@ sudo apt install -y kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
 echo "Kubernetes installation complete."
 
-
-
-
-
-# Install SonarQube
-# Install unzip if not already installed
-sudo apt-get install unzip -y
-
-# Create a user for SonarQube
-sudo adduser --disabled-password --gecos 'SonarQube' sonarqube
-
-# Switch to SonarQube user and install SonarQube
-sudo su - sonarqube <<EOF
-# Fetch the latest SonarQube version from the official source
-SONARQUBE_VERSION=$(curl -s https://api.github.com/repos/SonarSource/sonarqube/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
-SONARQUBE_URL="https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-${SONARQUBE_VERSION}.zip"
-
-# Download and extract SonarQube
-wget https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-9.4.0.54424.zip
-unzip sonarqube-9.4.0.54424.zip
-chmod -R 755 /home/sonarqube/sonarqube-9.4.0.54424
-# Change ownership
-chown -R sonarqube:sonarqube /home/sonarqube/sonarqube-9.4.0.54424
-# Start SonarQube
-cd sonarqube-9.4.0.54424/bin/linux-x86-64/
-./sonar.sh start
-EOF
-
-echo "Installation complete. Jenkins, Docker, Maven, Git, and SonarQube are set up."
-echo "Sonarqube installation complete."
-
 # Final message
 echo "All installations completed successfully."
+
+
+
+
+
+# set -e  # Exit immediately if a command exits with a non-zero status
+# set -o pipefail  # Prevent errors in pipelines from being masked
+
+# # Update and install required dependencies
+# echo "Updating system and installing dependencies..."
+# sudo apt update && sudo apt install -y awscli curl unzip jq apt-transport-https ca-certificates
+
+# # Install kubectl
+# echo "Installing kubectl..."
+# curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+# chmod +x kubectl
+# sudo mv kubectl /usr/local/bin/
+# kubectl version --client
+
+# # Install eksctl
+# echo "Installing eksctl..."
+# curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_Linux_amd64.tar.gz" | tar xz -C /tmp
+# sudo mv /tmp/eksctl /usr/local/bin
+# eksctl version
+
+# # Install kubelet and kubeadm
+# echo "Setting up Kubernetes repositories..."
+# sudo mkdir -p /etc/apt/keyrings
+# curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo tee /etc/apt/keyrings/kubernetes-apt-keyring.asc >/dev/null
+# echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.asc] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list >/dev/null
+
+# echo "Installing kubelet and kubeadm..."
+# sudo apt update
+# sudo apt install -y kubelet kubeadm
+
+# # Prevent automatic updates of kubelet and kubeadm
+# echo "Holding kubelet and kubeadm versions..."
+# sudo apt-mark hold kubelet kubeadm
+
+# echo "Installation completed successfully!"

@@ -68,6 +68,7 @@ resource "aws_security_group" "example_security_group" {
     to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    # cidr_blocks = ["${aws_eip.elastic_ip[0].public_ip}/32"]
   }
 
   ingress {
@@ -78,16 +79,17 @@ resource "aws_security_group" "example_security_group" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Allow HTTP access (port 8080) for Jenkins web interface
+   # Allow traffic from EKS worker nodes (for internal communication)
   ingress {
-    description = "jenkins access"
-    from_port   = 8080
-    to_port     = 8080
+    from_port   = 0
+    to_port     = 65535
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
+    # security_groups = [var.worknode_security_group_pass]  # Allow traffic from worker nodes
+    description = "Allow communication from EKS worker nodes"
   }
 
-  # Allow HTTP access (port 8080) for Jenkins web interface
+  # Allow HTTP access (port 9000) for Sonar-Qube
   ingress {
     description = "sonarqube access"
     from_port   = 9000

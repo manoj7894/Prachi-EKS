@@ -48,6 +48,10 @@ variable "security_group_name" {
   description = "Name of the security group"
 }
 
+variable "worknode_security_group_pass" {
+  description = "Pass workernode Security Group"
+}
+
 # variable "instance_tenancy" {
 #     description = "The tenancy of the instance (e.g., default, dedicated, host)"
 # }

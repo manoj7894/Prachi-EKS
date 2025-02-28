@@ -6,13 +6,17 @@ variable "ec2_security_group_pass" {
   description = "Pass the ec2 security group in EKS cluster"
 }
 
-# variable "vpc_cidr_block" {
-#   description = "The CIDR block of the VPC"
-#   type        = string
-# }
+variable "vpc_cidr_block" {
+  description = "The CIDR block of the VPC"
+  type        = string
+}
 
 variable "role_name" {
   description = "EKS IAM role"
+}
+
+variable "cluster_name" {
+  description = "Give the cluster_name"
 }
 
 variable "private_subnet_id_value_1" {
@@ -31,16 +35,24 @@ variable "ebs_policy" {
   description = "EBS policy name"
 }
 
+variable "ami_value" {
+    description = "value for the ami"
+}
+
 variable "instance_type_value" {
     description = "value for instance_type"
 }
 
-variable "cluster_name" {
-  description = "Give the cluster_name"
+variable "associate_public_ip_address" {
+  description = "Enable the public IP address"
 }
 
-variable "workernode_name" {
-  description = "Give the workernode_name"
+variable "availability_zone_2" {
+    description = "availablity_zone name"
+}
+
+variable "instance_count" {
+    description = "count of instances"
 }
 
 variable "key_name" {
@@ -52,6 +64,22 @@ variable "vpc_id" {
   type        = string
 }
 
-# variable "ubuntu_ami" {
-#   description = "value of ubuntu AMI_id"
+variable "volume_size" {
+  description = "Size of EBS volume"
+}
+
+variable "volume_type" {
+  description = "Type of EBS volume"
+}
+
+variable "alb_security_name" {
+  description = "Load Balancer Security group name"
+}
+
+variable "worker_node_sg_name" {
+  description = "Worker node Security group name"
+}
+
+# variable "instance_tenancy" {
+#     description = "The tenancy of the instance (e.g., default, dedicated, host)"
 # }

@@ -7,40 +7,12 @@ resource "aws_security_group" "EKS_cluster_sg" {
   # Define your security group rules as needed
   # For example, allow SSH and HTTP traffic
   ingress {
-    description = "ssh access"
-    from_port   = 22
-    to_port     = 22
+    description = "Allow traffic within the cluster"
+    from_port   = 0
+    to_port     = 65535
     protocol    = "tcp"
-    # cidr_blocks = ["0.0.0.0/0"]
-    security_groups = [var.ec2_security_group_pass]  # ✅ Correct usage
-  }
-
-  ingress {
-    description = "HTTP access"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    # cidr_blocks = ["0.0.0.0/0"]
-    security_groups = [var.ec2_security_group_pass]  # ✅ Correct usage
-  }
-
-  ingress {
-    description = "HTTPs access"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    # cidr_blocks = ["0.0.0.0/0"]
-    security_groups = [var.ec2_security_group_pass]  # ✅ Correct usage
-  }
-
-  # Allow HTTP access (port 8080) for Jenkins web interface
-  ingress {
-    description = "EFS access"
-    from_port   = 2049
-    to_port     = 2049
-    protocol    = "tcp"
-    # cidr_blocks = ["0.0.0.0/0"]
-    security_groups = [var.ec2_security_group_pass]  # ✅ Correct usage
+    cidr_blocks = [var.vpc_cidr_block]
+    # security_groups = [var.ec2_security_group_pass]  # ✅ Correct usage
   }
 
   # outgoing traffic
@@ -90,20 +62,19 @@ resource "aws_eks_cluster" "eks-cluster" {
   }
 }
 
-resource "aws_iam_role" "eks_node_role" {
-  name = var.worker_node_role
+# 2. IAM Role for Worker Nodes
+resource "aws_iam_role" "worker_node_role" {
+  name = "eks-worker-node-role"
 
   assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Action = "sts:AssumeRole",
-        Effect = "Allow",
-        Principal = {
-          Service = "ec2.amazonaws.com"
-        }
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "ec2.amazonaws.com"
       }
-    ]
+      Action = "sts:AssumeRole"
+    }]
   })
 }
 
@@ -135,80 +106,137 @@ resource "aws_iam_policy" "ebs_policy" {
 # Attach the EBS policy to the IAM role used by EKS nodes
 resource "aws_iam_role_policy_attachment" "attach_ebs_policy" {
   policy_arn = aws_iam_policy.ebs_policy.arn
-  role       = aws_iam_role.eks_node_role.name
+  role       = aws_iam_role.worker_node_role.name
 }
 
-resource "aws_iam_role_policy_attachment" "ebs_csi_driver_policy" {
-  role       = aws_iam_role.eks_node_role.name
+resource "aws_iam_instance_profile" "worker_node_profile" {
+  name = "eks-worker-node-profile"
+  role = aws_iam_role.worker_node_role.name
+}
+
+# Attach AmazonEKSWorkerNodePolicy
+resource "aws_iam_policy_attachment" "worker_node_policy" {
+  name       = "eks-worker-node-policy"
+  roles      = [aws_iam_role.worker_node_role.name]
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+# Attach AmazonEC2ContainerRegistryReadOnly
+resource "aws_iam_policy_attachment" "worker_node_ecr_policy" {
+  name       = "eks-worker-node-ecr-policy"
+  roles      = [aws_iam_role.worker_node_role.name]
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
+# Attach AmazonEKS_CNI_Policy
+resource "aws_iam_policy_attachment" "worker_node_cni_policy" {
+  name       = "eks-worker-node-cni-policy"
+  roles      = [aws_iam_role.worker_node_role.name]
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
+}
+
+# Attach AmazonEBSCSIDriverPolicy
+resource "aws_iam_policy_attachment" "ebs_csi_driver_policy" {
+  name       = "eks-worker-node-ebs-csi-policy"
+  roles      = [aws_iam_role.worker_node_role.name]
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
 }
 
-# To attach the policy1 to IAM role2
-resource "aws_iam_role_policy_attachment" "example-AmazonEKS_CNI_Policy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
-  role       = aws_iam_role.eks_node_role.name
-}
 
-# To attach the policy2 to IAM role2
-resource "aws_iam_role_policy_attachment" "example-AmazonEKSWorkerNodePolicy" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
-  role       = aws_iam_role.eks_node_role.name
-}
 
-# To attach the policy3 to IAM role2
-resource "aws_iam_role_policy_attachment" "example-AmazonEC2ContainerRegistryReadOnly" {
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-  role       = aws_iam_role.eks_node_role.name
-}
 
-# # Define the Launch Template for Ubuntu AMI
-# resource "aws_launch_template" "ubuntu_template" {
-#   name_prefix   = "ubuntu-template"
-#   image_id       = var.ubuntu_ami
-#   instance_type  = var.instance_type_value
-#   key_name       = var.key_name
 
-#   lifecycle {
-#     create_before_destroy = true
-#   }
 
-#   tags = {
-#     Name = "ubuntu-launch-template"
-#   }
-# }
 
-# To create the Worknodes
-resource "aws_eks_node_group" "node_01" {
-  cluster_name                = aws_eks_cluster.eks-cluster.name
-  node_group_name             = var.workernode_name
-  node_role_arn               = aws_iam_role.eks_node_role.arn
-  subnet_ids                  = [var.private_subnet_id_value_1, var.private_subnet_id_value_2]
 
-  remote_access {
-    ec2_ssh_key               = var.key_name
-    source_security_group_ids = [aws_security_group.EKS_cluster_sg.id]
+# ALB Security Group
+resource "aws_security_group" "alb_sg" {
+  name_prefix = var.alb_security_name
+  vpc_id      = var.vpc_id
+
+  ingress {
+    description = "Allow traffic from the internet"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-
-  scaling_config {
-    desired_size = 2
-    max_size     = 5
-    min_size     = 2
+  ingress {
+    description = "Allow traffic from the internet"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  labels = {
-    "Name" = "MyWorkerNode"
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+
+# Worker Node Security Group
+resource "aws_security_group" "worker_node_sg" {
+  name_prefix = var.worker_node_sg_name
+  vpc_id      = var.vpc_id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    security_groups = [var.ec2_security_group_pass] # Allow SSH from Public_Server
+  }
+
+  ingress {
+    description = "Allow traffic from EKS Control Plane"
+    from_port   = 0
+    to_port     = 65535
+    protocol    = "tcp"
+    security_groups = [aws_security_group.EKS_cluster_sg.id]
+  }
+
+  ingress {
+    description = "Allow traffic from ALB"
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    security_groups = [aws_security_group.alb_sg.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+
+
+# To create the Ec2 instance
+resource "aws_instance" "worknode" {
+  ami                         = var.ami_value           # Change to your desired AMI ID
+  instance_type               = var.instance_type_value # Change to your desired instance type
+  subnet_id                   = var.private_subnet_id_value_1
+  associate_public_ip_address = var.associate_public_ip_address         # Enable a public IP
+  key_name                    = var.key_name # Change to your key pair name
+  availability_zone           = var.availability_zone_2
+  count                       = var.instance_count
+  vpc_security_group_ids      = [aws_security_group.worker_node_sg.id]
+  iam_instance_profile = aws_iam_instance_profile.worker_node_profile.name  # Attach IAM Role
+  # Use the user_data variable
+  # user_data = var.user_data
+
+  root_block_device {
+    volume_size = var.volume_size
+    volume_type = var.volume_type
   }
 
   tags = {
-    "CustomTagKey" = "CustomTagValue"
+    Name = "Workernode-${count.index}"
   }
-
-  capacity_type = "ON_DEMAND"
-
-  #  launch_template {
-  #   id      = aws_launch_template.ubuntu_template.id
-  #   version = "$Latest"
-  # }
-  depends_on = [aws_eks_cluster.eks-cluster]
 }
